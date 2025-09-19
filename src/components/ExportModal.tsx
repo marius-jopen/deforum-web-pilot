@@ -10,9 +10,10 @@ interface ExportModalProps {
   schedules: DeforumSchedules | null;
   onClose: () => void;
   onCopyValue: (value: string) => void;
+  extraSchedules?: { fov: string; near: string; far: string };
 }
 
-export function ExportModal({ isOpen, schedules, onClose, onCopyValue }: ExportModalProps) {
+export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSchedules }: ExportModalProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   
   if (!isOpen || !schedules) return null;
@@ -23,7 +24,12 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue }: ExportM
     { key: 'Translation Z', value: schedules.translation_z },
     { key: 'Rotation 3D X', value: schedules.rotation_3d_x },
     { key: 'Rotation 3D Y', value: schedules.rotation_3d_y },
-    { key: 'Rotation 3D Z', value: schedules.rotation_3d_z }
+    { key: 'Rotation 3D Z', value: schedules.rotation_3d_z },
+    ...(extraSchedules ? [
+      { key: 'FOV', value: extraSchedules.fov },
+      { key: 'Near', value: extraSchedules.near },
+      { key: 'Far', value: extraSchedules.far }
+    ] : [])
   ];
 
   const handleCopyValue = (value: string, index: number) => {

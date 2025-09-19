@@ -145,6 +145,33 @@ export function App() {
     }
   }, []);
 
+  // Movement speed from UI (translation only)
+  const handleSetMoveSpeed = useCallback((unitsPerSecond: number) => {
+    if (pilotRef.current) {
+      pilotRef.current.setMoveSpeed(unitsPerSecond);
+    }
+  }, []);
+
+  // Camera params from UI schedules
+  const handleSetCameraParams = useCallback((params: { fov?: number; near?: number; far?: number }) => {
+    const cam = cameraRef.current;
+    if (!cam) return;
+    let needsUpdate = false;
+    if (typeof params.fov === 'number' && !Number.isNaN(params.fov)) {
+      cam.fov = params.fov;
+      needsUpdate = true;
+    }
+    if (typeof params.near === 'number' && !Number.isNaN(params.near)) {
+      cam.near = Math.max(0.001, params.near);
+      needsUpdate = true;
+    }
+    if (typeof params.far === 'number' && !Number.isNaN(params.far)) {
+      cam.far = Math.max(cam.near + 0.001, params.far);
+      needsUpdate = true;
+    }
+    if (needsUpdate) cam.updateProjectionMatrix();
+  }, []);
+
   // Smoothing controls
   const handleApplySmoothing = useCallback((options: SmoothingOptions) => {
     if (recorderRef.current) {
@@ -238,6 +265,8 @@ export function App() {
         onResetCamera={handleResetCamera}
         onSetTargetFPS={handleSetTargetFPS}
         onSetMouseSensitivity={handleSetMouseSensitivity}
+        onSetMoveSpeed={handleSetMoveSpeed}
+        onSetCameraParams={handleSetCameraParams}
         onApplySmoothing={handleApplySmoothing}
         onRevertSmoothing={handleRevertSmoothing}
         onExportSchedules={handleExportSchedules}

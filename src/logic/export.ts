@@ -40,8 +40,19 @@ export class Exporter {
       axisScaleY,
       axisScaleZ,
       includeEmptyFrames,
-      cadence
+      cadence,
+      masterScaleTranslate,
+      masterScaleRotate
     } = options;
+    // Map slider values v in [-2, 2] to scale factors: 0=>1x, v>0=>v, v<0=>1/(-v)
+    const mapScale = (v: number | undefined): number => {
+      const x = typeof v === 'number' ? v : 0;
+      if (x === 0) return 1;
+      if (x > 0) return x;
+      return 1 / (-x);
+    };
+    const translateFactor = mapScale(masterScaleTranslate);
+    const rotateFactor = mapScale(masterScaleRotate);
 
     const totalFrames = channelArrays.translation_x.length;
     const actualFrameEnd = Math.min(frameEnd, totalFrames - 1);
@@ -60,17 +71,16 @@ export class Exporter {
       ? Math.ceil(frameStart / cadence) * cadence
       : frameStart;
 
-    // Accumulate camera-local translations for robustness regardless of yaw/pitch
+    // Export per-frame deltas in camera-local space so idle frames are zeros
     let initializedLocal = false;
     let prevKeyFrame = startFrameForCadence;
-    let cumulativeLocal = new THREE.Vector3(0, 0, 0);
 
     for (let frame = startFrameForCadence; frame <= actualFrameEnd; frame += frameStep) {
       if (frame >= totalFrames) break;
       if (cadence > 1 && frame % cadence !== 0) continue;
 
       if (!initializedLocal) {
-        // First keyed frame is baseline at 0 in camera-local space
+        // First keyed frame emits zero delta
         translationXMap.set(frame, 0);
         translationYMap.set(frame, 0);
         translationZMap.set(frame, 0);
@@ -94,24 +104,34 @@ export class Exporter {
         const invRot = new THREE.Matrix4().makeRotationFromEuler(prevEuler).invert();
         const localDelta = worldDelta.clone().applyMatrix4(invRot);
 
-        cumulativeLocal.add(localDelta);
-
-        // Map camera-local axes to Deforum with agreed signs
-        translationXMap.set(frame, cumulativeLocal.x * axisScaleX);      // Left/Right
-        translationYMap.set(frame, -cumulativeLocal.y * axisScaleY);     // Up/Down (invert Y)
-        translationZMap.set(frame, -cumulativeLocal.z * axisScaleZ);     // Forward/Back (invert Z)
-
-        prevKeyFrame = frame;
+        // Per-frame deltas (idle -> zeros)
+        translationXMap.set(frame, translateFactor * (localDelta.x * axisScaleX));      // Left/Right
+        translationYMap.set(frame, translateFactor * (-localDelta.y * axisScaleY));     // Up/Down (invert Y)
+        translationZMap.set(frame, translateFactor * (-localDelta.z * axisScaleZ));     // Forward/Back (invert Z)
       }
 
       // Convert rotations from radians to degrees and apply scaling to match reference
       // Three.js: X=pitch(mouseY), Y=yaw(mouseX), Z=roll(0)
       // Deforum: X=pitch, Y=yaw, Z=roll
       // Based on user feedback: trying direct mapping with inversions
-      // Absolute rotations in degrees with scale and sign
-      rotationXMap.set(frame, -this.radiansToDegrees(channelArrays.rotation_3d_x[frame]) * 0.1);  // Pitch (inverted)
-      rotationYMap.set(frame, -this.radiansToDegrees(channelArrays.rotation_3d_y[frame]) * 0.1);  // Yaw (inverted)
-      rotationZMap.set(frame, this.radiansToDegrees(channelArrays.rotation_3d_z[frame]) * 0.1);   // Roll
+      // Per-frame rotation deltas (degrees), so idle -> zeros
+      if (frame === startFrameForCadence) {
+        rotationXMap.set(frame, 0);
+        rotationYMap.set(frame, 0);
+        rotationZMap.set(frame, 0);
+      } else {
+        const drx = channelArrays.rotation_3d_x[frame] - channelArrays.rotation_3d_x[prevKeyFrame];
+        const dry = channelArrays.rotation_3d_y[frame] - channelArrays.rotation_3d_y[prevKeyFrame];
+        const drz = channelArrays.rotation_3d_z[frame] - channelArrays.rotation_3d_z[prevKeyFrame];
+        rotationXMap.set(frame, rotateFactor * (-this.radiansToDegrees(drx) * 0.1));
+        rotationYMap.set(frame, rotateFactor * (-this.radiansToDegrees(dry) * 0.1));
+        rotationZMap.set(frame, rotateFactor * (this.radiansToDegrees(drz) * 0.1));
+      }
+
+      // Now advance the previous-keyed frame pointer after all deltas used it
+      if (initializedLocal) {
+        prevKeyFrame = frame;
+      }
     }
 
     // Handle empty frames if requested
@@ -257,7 +277,9 @@ export class Exporter {
       axisScaleZ: 1.0,  // Scaling to match reference file (0.1-7 range)
       includeEmptyFrames: true,
       preferAngleOverLens: true,
-      cadence: 4
+      cadence: 4,
+      masterScaleTranslate: 10,
+      masterScaleRotate: 1.5
     };
   }
 }

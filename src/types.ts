@@ -41,6 +41,8 @@ export interface ExportOptions {
   includeEmptyFrames: boolean;
   preferAngleOverLens: boolean;
   cadence: number;
+  masterScaleTranslate?: number; // -1..1 exponent range, 0 = 1x
+  masterScaleRotate?: number; // -1..1 exponent range, 0 = 1x
 }
 
 export interface DeforumSchedules {

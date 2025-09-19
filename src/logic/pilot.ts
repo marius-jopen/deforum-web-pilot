@@ -155,8 +155,8 @@ export class Pilot {
       const deltaX = event.movementX;
       const deltaY = event.movementY;
       
-      // Horizontal rotation (yaw)
-      this.controls.mouseX += deltaX * this.controls.sensitivity;
+      // Horizontal rotation (yaw) - inverted for visual preference
+      this.controls.mouseX -= deltaX * this.controls.sensitivity;
       
       // Vertical rotation (pitch) - inverted for natural FPS feel
       this.controls.mouseY -= deltaY * this.controls.sensitivity;
@@ -211,6 +211,16 @@ export class Pilot {
   setSpeedLevel(level: SpeedLevel): void {
     this.currentSpeedLevel = level;
     this.speed = this.speedLevels[level];
+  }
+
+  /** Set movement speed (translation only) */
+  setMoveSpeed(unitsPerSecond: number): void {
+    this.speed = Math.max(0, unitsPerSecond);
+  }
+
+  /** Back-compat alias */
+  setSpeed(unitsPerSecond: number): void {
+    this.setMoveSpeed(unitsPerSecond);
   }
 
   setMouseSensitivity(sensitivity: number): void {

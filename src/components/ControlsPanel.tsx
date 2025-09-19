@@ -18,6 +18,8 @@ interface ControlsPanelProps {
   onResetCamera: () => void;
   onSetTargetFPS: (fps: number) => void;
   onSetMouseSensitivity: (sensitivity: number) => void;
+  onSetMoveSpeed: (unitsPerSecond: number) => void;
+  onSetCameraParams: (params: { fov?: number; near?: number; far?: number }) => void;
   onApplySmoothing: (options: SmoothingOptions) => void;
   onRevertSmoothing: () => void;
   onExportSchedules: (options: ExportOptions) => Promise<{schedules: DeforumSchedules, json: string, pretty: string}>;
@@ -38,6 +40,7 @@ export function ControlsPanel({
   onResetCamera,
   onSetTargetFPS,
   onSetMouseSensitivity,
+  onSetMoveSpeed,
   onApplySmoothing,
   onRevertSmoothing,
   onExportSchedules,
@@ -64,10 +67,17 @@ export function ControlsPanel({
     axisScaleZ: 1.0,  // Scaling to match reference file (0.1-7 range)
     includeEmptyFrames: true,
     preferAngleOverLens: true,
-    cadence: 4
+    cadence: 4,
+    masterScaleTranslate: 10,
+    masterScaleRotate: 1.5
   });
   const [exportedSchedules, setExportedSchedules] = useState<DeforumSchedules | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [fovValue, setFovValue] = useState<number>(70);
+  const [appliedFlash, setAppliedFlash] = useState(false);
+  const [revertedFlash, setRevertedFlash] = useState(false);
+  const applyTimerRef = useRef<number | null>(null);
+  const revertTimerRef = useRef<number | null>(null);
 
 
   const handleTargetFPSChange = (fps: number) => {
@@ -83,12 +93,23 @@ export function ControlsPanel({
     setExportOptions(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleApplySmoothing = () => {
-    onApplySmoothing(smoothingOptions);
+  const handleApplySmoothing = (opts?: SmoothingOptions) => {
+    const toApply = opts ?? smoothingOptions;
+    onApplySmoothing(toApply);
+    setAppliedFlash(true);
+    if (applyTimerRef.current) {
+      window.clearTimeout(applyTimerRef.current);
+    }
+    applyTimerRef.current = window.setTimeout(() => setAppliedFlash(false), 1000);
   };
 
   const handleRevertSmoothing = () => {
     onRevertSmoothing();
+    setRevertedFlash(true);
+    if (revertTimerRef.current) {
+      window.clearTimeout(revertTimerRef.current);
+    }
+    revertTimerRef.current = window.setTimeout(() => setRevertedFlash(false), 1000);
   };
 
   const handleExportSchedules = async () => {
@@ -120,6 +141,31 @@ export function ControlsPanel({
       }));
     }
   }, [totalFrames]);
+
+  // Live smoothing: 0 = revert; >0 applies stronger average
+  useEffect(() => {
+    if (totalFrames <= 0) return;
+    if (simpleSmoothing <= 0) {
+      onRevertSmoothing();
+      return;
+    }
+    const windowSize = Math.max(1, Math.round(1 + (simpleSmoothing / 100) * 49));
+    const iterations = Math.max(1, Math.round(1 + (simpleSmoothing / 100) * 9));
+    const newOptions: SmoothingOptions = {
+      method: 'average',
+      windowSize,
+      iterations,
+      nonDestructive: true
+    };
+    onApplySmoothing(newOptions);
+  }, [simpleSmoothing, totalFrames, onApplySmoothing, onRevertSmoothing]);
+
+  useEffect(() => {
+    return () => {
+      if (applyTimerRef.current) window.clearTimeout(applyTimerRef.current);
+      if (revertTimerRef.current) window.clearTimeout(revertTimerRef.current);
+    };
+  }, []);
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -213,15 +259,16 @@ export function ControlsPanel({
 
         <div>
           <label style={{ display: 'block', marginBottom: '4px' }}>
-            Sampler FPS:
+            Sampler FPS: {targetFPS}
           </label>
           <input
-            type="number"
+            type="range"
+            min={1}
+            max={120}
+            step={1}
             value={targetFPS}
             onChange={(e) => handleTargetFPSChange(Number(e.target.value))}
-            min="1"
-            max="120"
-            style={inputStyle}
+            style={{ width: '100%', margin: '6px 0 0 0' }}
           />
         </div>
 
@@ -238,10 +285,7 @@ export function ControlsPanel({
             onChange={(e) => {
               const newSpeed = Number(e.target.value);
               setSpeedSlider(newSpeed);
-              // Update pilot speed
-              if (pilotRef.current) {
-                pilotRef.current.setSpeed(newSpeed);
-              }
+              onSetMoveSpeed(newSpeed);
             }}
             style={{
               width: '100%',
@@ -254,12 +298,12 @@ export function ControlsPanel({
           <label style={{ display: 'block', marginBottom: '4px' }}>
             Mouse Sensitivity: {(mouseSensitivity * 1000).toFixed(1)}
           </label>
-            <input
-              type="range"
-              min="0.0001"
-              max="0.005"
-              step="0.0001"
-              value={mouseSensitivity}
+          <input
+            type="range"
+            min="0.00001"
+            max="0.005"
+            step="0.00001"
+            value={mouseSensitivity}
             onChange={(e) => {
               const newSensitivity = Number(e.target.value);
               setMouseSensitivity(newSensitivity);
@@ -271,11 +315,13 @@ export function ControlsPanel({
             }}
           />
         </div>
+
+        {/* FOV control removed per request */}
       </div>
 
-      {/* Post-smoothing Controls */}
+      {/* Post Controls */}
       <div style={sectionStyle}>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Post-smoothing</h3>
+        <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Post</h3>
         
         <div>
           <label style={{ display: 'block', marginBottom: '4px' }}>
@@ -294,9 +340,44 @@ export function ControlsPanel({
           />
         </div>
 
+        <div style={{ marginTop: '8px' }}>
+          <label style={{ display: 'block', marginBottom: '4px' }}>
+            Translate Scale: {exportOptions.masterScaleTranslate ?? 0}
+          </label>
+          <input
+            type="range"
+            min={-20}
+            max={20}
+            step={0.01}
+            value={exportOptions.masterScaleTranslate ?? 0}
+            onChange={(e) => handleExportOptionsChange('masterScaleTranslate', Number(e.target.value))}
+            style={{ width: '100%', margin: '4px 0' }}
+          />
+        </div>
+
+        <div style={{ marginTop: '8px' }}>
+          <label style={{ display: 'block', marginBottom: '4px' }}>
+            Rotation Scale: {exportOptions.masterScaleRotate ?? 0}
+          </label>
+          <input
+            type="range"
+            min={-10}
+            max={10}
+            step={0.01}
+            value={exportOptions.masterScaleRotate ?? 0}
+            onChange={(e) => handleExportOptionsChange('masterScaleRotate', Number(e.target.value))}
+            style={{ width: '100%', margin: '4px 0' }}
+          />
+        </div>
+
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
-            style={{ ...buttonStyle, flex: 1 }}
+            style={{
+              ...buttonStyle,
+              flex: 1,
+              backgroundColor: appliedFlash ? '#2e7d32' : buttonStyle.backgroundColor,
+              borderColor: appliedFlash ? '#2e7d32' : buttonStyle.borderColor as any
+            }}
             onClick={() => {
               // Convert percentage to window size (0-100% = 1-50 window size, much stronger at 100%)
               const windowSize = Math.max(1, Math.round(1 + (simpleSmoothing / 100) * 49));
@@ -309,49 +390,35 @@ export function ControlsPanel({
                 nonDestructive: true
               };
               
-              onApplySmoothing(newOptions);
+              handleApplySmoothing(newOptions);
             }}
-            disabled={totalFrames === 0}
+            disabled={false}
           >
-            Apply
+            {appliedFlash ? '✅ Applied' : 'Apply'}
           </button>
           
           <button
-            style={{ ...buttonStyle, flex: 1 }}
+            style={{
+              ...buttonStyle,
+              flex: 1,
+              backgroundColor: revertedFlash ? '#2e7d32' : buttonStyle.backgroundColor,
+              borderColor: revertedFlash ? '#2e7d32' : buttonStyle.borderColor as any
+            }}
             onClick={handleRevertSmoothing}
-            disabled={totalFrames === 0}
+            disabled={false}
           >
-            Revert
+            {revertedFlash ? '✅ Reverted' : 'Revert'}
           </button>
         </div>
       </div>
 
-      {/* Export Controls */}
+      {/* Export Controls (cadence removed) */}
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Export</h3>
-        
-        <div>
-          <label style={{ display: 'block', marginBottom: '4px' }}>
-            Cadence: {exportOptions.cadence}
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            step="1"
-            value={exportOptions.cadence}
-            onChange={(e) => handleExportOptionsChange('cadence', Number(e.target.value))}
-            style={{
-              width: '100%',
-              margin: '4px 0'
-            }}
-          />
-        </div>
-
         <button
           style={{ ...buttonStyle, width: '100%', marginBottom: '8px' }}
           onClick={handleExportSchedules}
-          disabled={totalFrames === 0}
+          disabled={false}
         >
           Export Schedules
         </button>
