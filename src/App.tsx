@@ -244,7 +244,6 @@ export function App() {
       <HUD
         isRecording={isRecording}
         isPlaying={isPlaying}
-        isPaused={false}
         speedLevel={speedLevel}
         currentFrame={currentFrame}
         totalFrames={totalFrames}
@@ -257,7 +256,6 @@ export function App() {
         isRecording={isRecording}
         isPlaying={isPlaying}
         totalFrames={totalFrames}
-        currentFrame={currentFrame}
         onStartRecording={handleStartRecording}
         onStopRecording={handleStopRecording}
         onStartPlayback={handleStartPlayback}
@@ -270,10 +268,29 @@ export function App() {
         onApplySmoothing={handleApplySmoothing}
         onRevertSmoothing={handleRevertSmoothing}
         onExportSchedules={handleExportSchedules}
-        onCopyJSON={handleCopyJSON}
-        onDownloadJSON={handleDownloadJSON}
-        onDownloadSchedules={handleDownloadSchedules}
       />
+
+      {/* Branding pill */}
+      <a
+        href="https://therobots.world"
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          position: 'fixed',
+          right: '20px',
+          bottom: '20px',
+          background: '#efd7fd',
+          color: '#000000',
+          borderRadius: '999px',
+          padding: '8px 14px',
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          textDecoration: 'none',
+          zIndex: 1100
+        }}
+      >
+        by THE ROBOTS
+      </a>
     </div>
   );
 }

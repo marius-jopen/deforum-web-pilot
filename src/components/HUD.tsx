@@ -34,9 +34,9 @@ export function HUD({
   };
 
   const getStatusColor = () => {
-    if (isRecording) return '#ff4444';
-    if (isPlaying) return '#44ff44';
-    return '#ffffff';
+    if (isRecording) return '#ff3434';
+    if (isPlaying) return '#000000';
+    return '#000000';
   };
 
   const getSpeedText = () => {
@@ -63,14 +63,14 @@ export function HUD({
         top: '20px',
         right: '20px',
         zIndex: 1000,
-        background: 'rgba(0, 0, 0, 0.8)',
+        background: '#f4e1ff',
         padding: '12px 16px',
-        borderRadius: '8px',
+        borderRadius: '12px',
         fontFamily: 'monospace',
         fontSize: '14px',
-        color: '#ffffff',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        minWidth: '200px'
+        color: '#000000',
+        border: 'none',
+        minWidth: '220px'
       }}
     >
       <div style={{ marginBottom: '8px' }}>
@@ -97,11 +97,11 @@ export function HUD({
         </div>
       )}
       
-      <div style={{ marginBottom: '4px', fontSize: '12px', color: '#cccccc' }}>
+      <div style={{ marginBottom: '4px', fontSize: '12px', color: '#303030' }}>
         FPS: {targetFPS}
       </div>
       
-      <div style={{ fontSize: '12px', color: '#cccccc', marginTop: '8px' }}>
+      <div style={{ fontSize: '12px', color: '#303030', marginTop: '8px' }}>
         Controls:
         <br />• WASD: Move
         <br />• Q/E: Up/Down

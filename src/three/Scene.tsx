@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Sky, Grid } from '@react-three/drei';
+import { Grid } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface SceneProps {
@@ -15,9 +15,52 @@ interface SceneProps {
 function SceneContent({ onCameraReady, onFrame }: SceneProps) {
   const { camera } = useThree();
 
+  // Pink sky gradient background (primary to light)
+  const BackgroundGradient = () => {
+    const shader = useMemo(() => ({
+      uniforms: {
+        topColor: { value: new THREE.Color('#f4e1ff') }, // primary pink
+        bottomColor: { value: new THREE.Color('#f5f5f5') }, // light
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        varying vec3 vWorldPosition;
+        void main() {
+          float h = clamp(vWorldPosition.y / 200.0, 0.0, 1.0);
+          vec3 color = mix(bottomColor, topColor, h);
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `
+    }), []);
+    return (
+      <mesh scale={[1, 1, 1]}>
+        <sphereGeometry args={[500, 32, 32]} />
+        <shaderMaterial args={[shader]} side={THREE.BackSide} />
+      </mesh>
+    );
+  };
+
   // Generate scattered objects only once using useMemo
   const scatteredObjects = useMemo(() => {
     const objects = [];
+    // Theme palette based on provided CSS colors
+    const palette = [
+      '#f4e1ff', // primary
+      '#efd7fd', // secondary
+      '#f5f5f5', // tertiary (white-ish)
+      '#000000', // black
+      '#ffffff', // white (text-tertiary)
+      '#ff3434'  // red (text-quinary)
+    ];
     const seed = Math.floor(Date.now() / 1000); // Use time-based seed for different positions each load
     
     for (let i = 0; i < 50; i++) {
@@ -36,8 +79,7 @@ function SceneContent({ onCameraReady, onFrame }: SceneProps) {
       const z = Math.sin(angle) * radius;
       const y = (ySeed % 5000) / 1000 + 0.5; // 0.5 to 5.5 height
       const scale = (scaleSeed % 1500) / 1000 + 0.5; // 0.5 to 2.0 scale
-      const hue = (colorSeed % 360);
-      const color = `hsl(${hue}, 70%, 60%)`;
+      const color = palette[colorSeed % palette.length];
       const shape = Math.floor((shapeSeed % 4000) / 1000);
       
       objects.push(
@@ -68,17 +110,8 @@ function SceneContent({ onCameraReady, onFrame }: SceneProps) {
   return (
     <>
 
-      {/* Sky gradient background */}
-      <Sky
-        distance={450000}
-        sunPosition={[0, 1, 0]}
-        inclination={0.49}
-        azimuth={0.25}
-        turbidity={10}
-        rayleigh={0.5}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.8}
-      />
+      {/* Pink sky gradient background */}
+      <BackgroundGradient />
 
       {/* Floor plane with grid */}
       <Grid
@@ -86,10 +119,10 @@ function SceneContent({ onCameraReady, onFrame }: SceneProps) {
         args={[100, 100]}
         cellSize={1}
         cellThickness={0.5}
-        cellColor="#404040"
+        cellColor="#303030"
         sectionSize={10}
         sectionThickness={1}
-        sectionColor="#606060"
+        sectionColor="#000000"
         fadeDistance={50}
         fadeStrength={1}
         followCamera={false}
@@ -116,30 +149,30 @@ function SceneContent({ onCameraReady, onFrame }: SceneProps) {
       {/* Scattered objects for reference */}
       {scatteredObjects}
       
-      {/* Some larger reference objects */}
+      {/* Some larger reference objects using theme colors */}
       <mesh position={[20, 2, 20]}>
         <boxGeometry args={[4, 4, 4]} />
-        <meshStandardMaterial color="#ff6b6b" />
+        <meshStandardMaterial color="#ff3434" />
       </mesh>
 
       <mesh position={[-20, 1, 20]}>
         <sphereGeometry args={[2, 32, 32]} />
-        <meshStandardMaterial color="#4ecdc4" />
+        <meshStandardMaterial color="#f4e1ff" />
       </mesh>
 
       <mesh position={[0, 2, -20]}>
         <coneGeometry args={[2, 4, 8]} />
-        <meshStandardMaterial color="#45b7d1" />
+        <meshStandardMaterial color="#efd7fd" />
       </mesh>
 
       <mesh position={[30, 1, -30]}>
         <cylinderGeometry args={[2, 2, 2, 8]} />
-        <meshStandardMaterial color="#f39c12" />
+        <meshStandardMaterial color="#000000" />
       </mesh>
 
       <mesh position={[-30, 1, -30]}>
         <boxGeometry args={[3, 3, 3]} />
-        <meshStandardMaterial color="#e74c3c" />
+        <meshStandardMaterial color="#ffffff" />
       </mesh>
     </>
   );

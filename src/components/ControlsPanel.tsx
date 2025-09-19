@@ -10,7 +10,6 @@ interface ControlsPanelProps {
   isRecording: boolean;
   isPlaying: boolean;
   totalFrames: number;
-  currentFrame: number;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onStartPlayback: () => void;
@@ -23,16 +22,12 @@ interface ControlsPanelProps {
   onApplySmoothing: (options: SmoothingOptions) => void;
   onRevertSmoothing: () => void;
   onExportSchedules: (options: ExportOptions) => Promise<{schedules: DeforumSchedules, json: string, pretty: string}>;
-  onCopyJSON: (json: string) => void;
-  onDownloadJSON: (json: string) => void;
-  onDownloadSchedules: (schedules: string) => void;
 }
 
 export function ControlsPanel({
   isRecording,
   isPlaying,
   totalFrames,
-  currentFrame,
   onStartRecording,
   onStopRecording,
   onStartPlayback,
@@ -43,10 +38,7 @@ export function ControlsPanel({
   onSetMoveSpeed,
   onApplySmoothing,
   onRevertSmoothing,
-  onExportSchedules,
-  onCopyJSON,
-  onDownloadJSON,
-  onDownloadSchedules
+  onExportSchedules
 }: ControlsPanelProps) {
   const [targetFPS, setTargetFPS] = useState(20);
   const [speedSlider, setSpeedSlider] = useState(1.0);
@@ -73,7 +65,7 @@ export function ControlsPanel({
   });
   const [exportedSchedules, setExportedSchedules] = useState<DeforumSchedules | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [fovValue, setFovValue] = useState<number>(70);
+  // Removed unused fov state
   const [appliedFlash, setAppliedFlash] = useState(false);
   const [revertedFlash, setRevertedFlash] = useState(false);
   const applyTimerRef = useRef<number | null>(null);
@@ -85,9 +77,7 @@ export function ControlsPanel({
     onSetTargetFPS(fps);
   };
 
-  const handleSmoothingChange = (key: keyof SmoothingOptions, value: any) => {
-    setSmoothingOptions(prev => ({ ...prev, [key]: value }));
-  };
+  // Removed unused handler
 
   const handleExportOptionsChange = (key: keyof ExportOptions, value: any) => {
     setExportOptions(prev => ({ ...prev, [key]: value }));
@@ -167,35 +157,30 @@ export function ControlsPanel({
     };
   }, []);
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '4px 8px',
-    margin: '2px 0',
-    border: '1px solid #444',
-    borderRadius: '4px',
-    backgroundColor: '#222',
-    color: '#fff',
-    fontSize: '12px'
-  };
+  // No standalone input style needed
 
   const buttonStyle: React.CSSProperties = {
     padding: '8px 12px',
     margin: '2px',
-    border: '1px solid #444',
-    borderRadius: '4px',
-    backgroundColor: '#333',
-    color: '#fff',
+    border: 'none',
+    borderRadius: '999px',
+    backgroundColor: '#ffffff',
+    color: '#000000',
     cursor: 'pointer',
-    fontSize: '12px'
+    fontSize: '12px',
+    transition: 'background-color 0.15s, color 0.15s'
   };
 
   const sectionStyle: React.CSSProperties = {
     marginBottom: '16px',
     padding: '12px',
-    border: '1px solid #444',
-    borderRadius: '6px',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)'
+    border: 'none',
+    borderRadius: '12px',
+    backgroundColor: '#efd7fd'
   };
+
+  const pastelRed = '#ffb3b3';
+  const pastelGreen = '#b6e3b6';
 
   return (
     <div
@@ -207,13 +192,13 @@ export function ControlsPanel({
         maxHeight: 'calc(100vh - 40px)',
         overflowY: 'auto',
         zIndex: 1000,
-        background: 'rgba(0, 0, 0, 0.9)',
+        background: '#f4e1ff',
         padding: '16px',
-        borderRadius: '8px',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '16px',
+        border: 'none',
         fontFamily: 'monospace',
         fontSize: '12px',
-        color: '#ffffff'
+        color: '#000000'
       }}
     >
       <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', textAlign: 'center' }}>
@@ -228,10 +213,12 @@ export function ControlsPanel({
           <button
             style={{
               ...buttonStyle,
-              backgroundColor: isRecording ? '#ff4444' : '#333',
+              backgroundColor: isRecording ? pastelRed : buttonStyle.backgroundColor,
               flex: 1
             }}
             onClick={isRecording ? onStopRecording : onStartRecording}
+            onMouseOver={(e) => { if (!isRecording) { e.currentTarget.style.backgroundColor = '#000000'; e.currentTarget.style.color = '#ffffff'; } }}
+            onMouseOut={(e) => { if (!isRecording) { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#000000'; } }}
             disabled={isPlaying}
           >
             {isRecording ? 'Stop' : 'Record'}
@@ -240,10 +227,12 @@ export function ControlsPanel({
           <button
             style={{
               ...buttonStyle,
-              backgroundColor: isPlaying ? '#ff4444' : '#333',
+              backgroundColor: isPlaying ? pastelGreen : buttonStyle.backgroundColor,
               flex: 1
             }}
             onClick={isPlaying ? onStopPlayback : onStartPlayback}
+            onMouseOver={(e) => { if (!isPlaying) { e.currentTarget.style.backgroundColor = '#000000'; e.currentTarget.style.color = '#ffffff'; } }}
+            onMouseOut={(e) => { if (!isPlaying) { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#000000'; } }}
             disabled={isRecording || totalFrames === 0}
           >
             {isPlaying ? 'Stop' : 'Play'}
@@ -253,6 +242,8 @@ export function ControlsPanel({
         <button
           style={{ ...buttonStyle, width: '100%', marginBottom: '8px' }}
           onClick={onResetCamera}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#000000'; e.currentTarget.style.color = '#ffffff'; }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#000000'; }}
         >
           Reset Camera
         </button>
@@ -375,8 +366,7 @@ export function ControlsPanel({
             style={{
               ...buttonStyle,
               flex: 1,
-              backgroundColor: appliedFlash ? '#2e7d32' : buttonStyle.backgroundColor,
-              borderColor: appliedFlash ? '#2e7d32' : buttonStyle.borderColor as any
+              backgroundColor: appliedFlash ? pastelGreen : buttonStyle.backgroundColor
             }}
             onClick={() => {
               // Convert percentage to window size (0-100% = 1-50 window size, much stronger at 100%)
@@ -392,6 +382,8 @@ export function ControlsPanel({
               
               handleApplySmoothing(newOptions);
             }}
+            onMouseOver={(e) => { if (!appliedFlash) { e.currentTarget.style.backgroundColor = '#000000'; e.currentTarget.style.color = '#ffffff'; } }}
+            onMouseOut={(e) => { if (!appliedFlash) { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#000000'; } }}
             disabled={false}
           >
             {appliedFlash ? '✅ Applied' : 'Apply'}
@@ -401,10 +393,11 @@ export function ControlsPanel({
             style={{
               ...buttonStyle,
               flex: 1,
-              backgroundColor: revertedFlash ? '#2e7d32' : buttonStyle.backgroundColor,
-              borderColor: revertedFlash ? '#2e7d32' : buttonStyle.borderColor as any
+              backgroundColor: revertedFlash ? pastelGreen : buttonStyle.backgroundColor
             }}
             onClick={handleRevertSmoothing}
+            onMouseOver={(e) => { if (!revertedFlash) { e.currentTarget.style.backgroundColor = '#000000'; e.currentTarget.style.color = '#ffffff'; } }}
+            onMouseOut={(e) => { if (!revertedFlash) { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#000000'; } }}
             disabled={false}
           >
             {revertedFlash ? '✅ Reverted' : 'Revert'}
@@ -418,6 +411,8 @@ export function ControlsPanel({
         <button
           style={{ ...buttonStyle, width: '100%', marginBottom: '8px' }}
           onClick={handleExportSchedules}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#000000'; e.currentTarget.style.color = '#ffffff'; }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#000000'; }}
           disabled={false}
         >
           Export Schedules

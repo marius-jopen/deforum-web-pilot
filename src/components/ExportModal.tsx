@@ -55,7 +55,7 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSche
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: '#f4e1ff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -66,32 +66,33 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSche
     >
       <div
         style={{
-          backgroundColor: '#1a1a1a',
-          border: '2px solid #444',
-          borderRadius: '12px',
+          backgroundColor: '#f5f5f5',
+          border: 'none',
+          borderRadius: '20px',
           padding: '24px',
           maxWidth: '600px',
           width: '100%',
           maxHeight: '80vh',
           overflowY: 'auto',
           fontFamily: 'monospace',
-          color: '#fff'
+          color: '#000000'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '20px', color: '#fff' }}>
+          <h2 style={{ margin: 0, fontSize: '20px', color: '#000000' }}>
             Deforum Schedules
           </h2>
           <button
             onClick={onClose}
             style={{
-              background: 'none',
+              background: '#000000',
               border: 'none',
-              color: '#fff',
+              color: '#ffffff',
               fontSize: '24px',
               cursor: 'pointer',
-              padding: '4px 8px'
+              padding: '4px 8px',
+              borderRadius: '999px'
             }}
           >
             ×
@@ -102,11 +103,11 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSche
           <button
             onClick={handleCopyAll}
             style={{
-              background: copiedIndex === -1 ? '#4CAF50' : '#333',
-              border: '1px solid #555',
-              color: '#fff',
+              background: copiedIndex === -1 ? '#4CAF50' : '#000000',
+              border: 'none',
+              color: '#ffffff',
               padding: '8px 16px',
-              borderRadius: '6px',
+              borderRadius: '999px',
               cursor: 'pointer',
               fontSize: '14px',
               marginBottom: '16px',
@@ -124,9 +125,9 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSche
               justifyContent: 'space-between', 
               alignItems: 'center',
               padding: '12px 16px',
-              backgroundColor: '#2a2a2a',
-              borderRadius: '8px',
-              border: '1px solid #444'
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              border: 'none'
             }}>
               <span style={{ fontWeight: 'bold', fontSize: '16px' }}>
                 {entry.key}
@@ -134,11 +135,11 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSche
               <button
                 onClick={() => handleCopyValue(entry.value, index)}
                 style={{
-                  background: copiedIndex === index ? '#4CAF50' : '#444',
-                  border: '1px solid #666',
-                  color: '#fff',
+                  background: copiedIndex === index ? '#4CAF50' : '#000000',
+                  border: 'none',
+                  color: '#ffffff',
                   padding: '8px 16px',
-                  borderRadius: '6px',
+                  borderRadius: '999px',
                   cursor: 'pointer',
                   fontSize: '14px',
                   display: 'flex',
@@ -146,8 +147,8 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSche
                   gap: '6px',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = copiedIndex === index ? '#4CAF50' : '#555'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = copiedIndex === index ? '#4CAF50' : '#444'}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = copiedIndex === index ? '#4CAF50' : '#111111'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = copiedIndex === index ? '#4CAF50' : '#000000'}
               >
                 {copiedIndex === index ? '✅ Copied!' : '🔄 Copy'}
               </button>
@@ -155,7 +156,7 @@ export function ExportModal({ isOpen, schedules, onClose, onCopyValue, extraSche
           ))}
         </div>
 
-        <div style={{ marginTop: '20px', fontSize: '12px', color: '#888', textAlign: 'center' }}>
+        <div style={{ marginTop: '20px', fontSize: '12px', color: '#303030', textAlign: 'center' }}>
           Click any copy button to copy the schedule value to clipboard
         </div>
       </div>
