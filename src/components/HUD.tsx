@@ -7,7 +7,6 @@ import { SpeedLevel } from '../types';
 interface HUDProps {
   isRecording: boolean;
   isPlaying: boolean;
-  isPaused: boolean;
   speedLevel: SpeedLevel;
   currentFrame: number;
   totalFrames: number;
@@ -18,7 +17,6 @@ interface HUDProps {
 export function HUD({
   isRecording,
   isPlaying,
-  isPaused,
   speedLevel,
   currentFrame,
   totalFrames,
