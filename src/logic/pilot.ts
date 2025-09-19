@@ -8,7 +8,7 @@ import { CameraControls, SpeedLevel } from '../types';
 export class Pilot {
   private camera: THREE.PerspectiveCamera;
   private controls: CameraControls;
-  private speed: number = 0;
+  private speed: number = 1.0;
   private speedLevels: Record<SpeedLevel, number> = {
     1: 1.0,   // Slow
     2: 3.0,   // Medium
@@ -16,7 +16,6 @@ export class Pilot {
   };
   private currentSpeedLevel: SpeedLevel = 1;
   private isPaused = false;
-  private isPointerLocked = false;
 
   constructor(camera: THREE.PerspectiveCamera) {
     this.camera = camera;
@@ -30,7 +29,8 @@ export class Pilot {
       mouseLook: false,
       mouseX: 0,
       mouseY: 0,
-      sensitivity: 0.002
+      sensitivity: 0.002,
+      shiftPressed: false
     };
 
     this.setupEventListeners();
@@ -89,6 +89,14 @@ export class Pilot {
       case 'Digit3':
         this.setSpeedLevel(3);
         break;
+      case 'Space':
+        // Prevent default space behavior (page scrolling)
+        event.preventDefault();
+        break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.controls.shiftPressed = true;
+        break;
     }
   }
 
@@ -112,11 +120,21 @@ export class Pilot {
       case 'KeyE':
         this.controls.moveDown = false;
         break;
+      case 'Space':
+        // Prevent default space behavior (page scrolling)
+        event.preventDefault();
+        break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.controls.shiftPressed = false;
+        break;
     }
   }
 
   private handleMouseDown(event: MouseEvent): void {
-    if (event.button === 0) { // Left mouse button
+    // Only handle mouse look if clicking on the canvas (not UI elements)
+    const target = event.target as HTMLElement;
+    if (event.button === 0 && target && target.tagName === 'CANVAS') {
       event.preventDefault();
       this.controls.mouseLook = true;
       this.requestPointerLock();
@@ -132,7 +150,8 @@ export class Pilot {
 
   private handleMouseMove(event: MouseEvent): void {
     // Only respond to mouse movement when left mouse button is held (FPS style)
-    if (this.controls.mouseLook) {
+    // and when pointer is locked (which only happens when clicking on canvas)
+    if (this.controls.mouseLook && document.pointerLockElement) {
       const deltaX = event.movementX;
       const deltaY = event.movementY;
       
@@ -148,32 +167,34 @@ export class Pilot {
   }
 
   private handleWheel(event: WheelEvent): void {
-    event.preventDefault();
-    
-    // Scroll wheel changes speed
-    const speedChange = event.deltaY > 0 ? -0.5 : 0.5;
-    const newSpeed = Math.max(0.5, Math.min(20, this.speed + speedChange));
-    
-    // Update speed level based on new speed
-    if (newSpeed <= 2.5) {
-      this.currentSpeedLevel = 1;
-    } else if (newSpeed <= 7.5) {
-      this.currentSpeedLevel = 2;
-    } else {
-      this.currentSpeedLevel = 3;
+    // Only handle wheel events when over the canvas
+    const target = event.target as HTMLElement;
+    if (target && target.tagName === 'CANVAS') {
+      event.preventDefault();
+      
+      // Scroll wheel changes speed - allow much slower speeds
+      const speedChange = event.deltaY > 0 ? -0.1 : 0.1;
+      const newSpeed = Math.max(0.05, Math.min(20, this.speed + speedChange));
+      
+      // Update speed level based on new speed
+      if (newSpeed <= 2.5) {
+        this.currentSpeedLevel = 1;
+      } else if (newSpeed <= 7.5) {
+        this.currentSpeedLevel = 2;
+      } else {
+        this.currentSpeedLevel = 3;
+      }
+      
+      this.speed = newSpeed;
     }
-    
-    this.speed = newSpeed;
   }
 
   private handlePointerLockChange(): void {
-    this.isPointerLocked = document.pointerLockElement === document.body;
     // Don't override mouseLook state - let it be controlled by mouse button
   }
 
   private handlePointerLockError(): void {
     console.warn('Pointer lock failed');
-    this.isPointerLocked = false;
     this.controls.mouseLook = false;
   }
 
@@ -190,6 +211,10 @@ export class Pilot {
   setSpeedLevel(level: SpeedLevel): void {
     this.currentSpeedLevel = level;
     this.speed = this.speedLevels[level];
+  }
+
+  setMouseSensitivity(sensitivity: number): void {
+    this.controls.sensitivity = sensitivity;
   }
 
   getSpeedLevel(): SpeedLevel {
@@ -209,8 +234,8 @@ export class Pilot {
   }
 
   resetCamera(): void {
-    this.camera.position.set(0, 100, 0);
-    this.camera.rotation.set(0, 0, 0);
+    this.camera.position.set(0, 1, 0);
+    this.camera.rotation.set(0, 0, 0, 'YXZ');
     this.controls.mouseX = 0;
     this.controls.mouseY = 0;
   }
@@ -222,7 +247,9 @@ export class Pilot {
   update(deltaTime: number): void {
     if (this.isPaused) return;
 
-    const moveSpeed = this.speed * deltaTime;
+    // Apply speed multiplier when shift is held
+    const speedMultiplier = this.controls.shiftPressed ? 2.0 : 1.0;
+    const moveSpeed = this.speed * speedMultiplier * deltaTime;
     const direction = new THREE.Vector3();
     const right = new THREE.Vector3();
     const up = new THREE.Vector3();
@@ -252,13 +279,15 @@ export class Pilot {
       this.camera.position.addScaledVector(up, -moveSpeed);
     }
 
-    // Apply mouse look rotation (FPS style - no roll/tilt)
-    this.camera.rotation.set(
-      this.controls.mouseY,   // pitch (X rotation) - vertical look
-      this.controls.mouseX,   // yaw (Y rotation) - horizontal look
-      0,                      // roll (Z rotation) - always 0 for no tilt
-      'YXZ'                   // Use YXZ order for proper FPS rotation
-    );
+    // Apply mouse look rotation only when mouse look is active (FPS style - no roll/tilt)
+    if (this.controls.mouseLook) {
+      this.camera.rotation.set(
+        this.controls.mouseY,   // pitch (X rotation) - vertical look
+        this.controls.mouseX,   // yaw (Y rotation) - horizontal look
+        0,                      // roll (Z rotation) - always 0 for no tilt
+        'YXZ'                   // Use YXZ order for proper FPS rotation
+      );
+    }
   }
 
   /**

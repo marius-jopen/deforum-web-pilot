@@ -2,7 +2,7 @@
  * Three.js scene with camera, lights, and 3D environment
  */
 
-import { useRef, useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Sky, Grid } from '@react-three/drei';
 import * as THREE from 'three';
@@ -14,6 +14,44 @@ interface SceneProps {
 
 function SceneContent({ onCameraReady, onFrame }: SceneProps) {
   const { camera } = useThree();
+
+  // Generate scattered objects only once using useMemo
+  const scatteredObjects = useMemo(() => {
+    const objects = [];
+    const seed = Math.floor(Date.now() / 1000); // Use time-based seed for different positions each load
+    
+    for (let i = 0; i < 50; i++) {
+      // Better random distribution using multiple seeds
+      const xSeed = (seed + i * 12345) * 9301 + 49297;
+      const zSeed = (seed + i * 54321) * 9301 + 49297;
+      const ySeed = (seed + i * 98765) * 9301 + 49297;
+      const scaleSeed = (seed + i * 11111) * 9301 + 49297;
+      const colorSeed = (seed + i * 22222) * 9301 + 49297;
+      const shapeSeed = (seed + i * 33333) * 9301 + 49297;
+      
+      // Generate positions in a circular area for better distribution
+      const angle = (xSeed % 360) * Math.PI / 180;
+      const radius = Math.sqrt((zSeed % 10000) / 10000) * 100; // Square root for better distribution
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      const y = (ySeed % 5000) / 1000 + 0.5; // 0.5 to 5.5 height
+      const scale = (scaleSeed % 1500) / 1000 + 0.5; // 0.5 to 2.0 scale
+      const hue = (colorSeed % 360);
+      const color = `hsl(${hue}, 70%, 60%)`;
+      const shape = Math.floor((shapeSeed % 4000) / 1000);
+      
+      objects.push(
+        <mesh key={i} position={[x, y, z]} scale={[scale, scale, scale]}>
+          {shape === 0 && <boxGeometry args={[1, 1, 1]} />}
+          {shape === 1 && <sphereGeometry args={[0.5, 16, 16]} />}
+          {shape === 2 && <coneGeometry args={[0.5, 1, 6]} />}
+          {shape === 3 && <cylinderGeometry args={[0.5, 0.5, 1, 8]} />}
+          <meshStandardMaterial color={color} />
+        </mesh>
+      );
+    }
+    return objects;
+  }, []); // Empty dependency array means this only runs once
 
   useEffect(() => {
     if (camera instanceof THREE.PerspectiveCamera) {
@@ -75,20 +113,33 @@ function SceneContent({ onCameraReady, onFrame }: SceneProps) {
       {/* Ambient light */}
       <ambientLight intensity={0.3} />
 
-      {/* Some simple geometry for reference */}
-      <mesh position={[5, 1, 5]}>
-        <boxGeometry args={[2, 2, 2]} />
+      {/* Scattered objects for reference */}
+      {scatteredObjects}
+      
+      {/* Some larger reference objects */}
+      <mesh position={[20, 2, 20]}>
+        <boxGeometry args={[4, 4, 4]} />
         <meshStandardMaterial color="#ff6b6b" />
       </mesh>
 
-      <mesh position={[-5, 0.5, 5]}>
-        <sphereGeometry args={[1, 32, 32]} />
+      <mesh position={[-20, 1, 20]}>
+        <sphereGeometry args={[2, 32, 32]} />
         <meshStandardMaterial color="#4ecdc4" />
       </mesh>
 
-      <mesh position={[0, 1, -5]}>
-        <coneGeometry args={[1, 2, 8]} />
+      <mesh position={[0, 2, -20]}>
+        <coneGeometry args={[2, 4, 8]} />
         <meshStandardMaterial color="#45b7d1" />
+      </mesh>
+
+      <mesh position={[30, 1, -30]}>
+        <cylinderGeometry args={[2, 2, 2, 8]} />
+        <meshStandardMaterial color="#f39c12" />
+      </mesh>
+
+      <mesh position={[-30, 1, -30]}>
+        <boxGeometry args={[3, 3, 3]} />
+        <meshStandardMaterial color="#e74c3c" />
       </mesh>
     </>
   );
@@ -98,14 +149,17 @@ export function Scene({ onCameraReady, onFrame }: SceneProps) {
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas
-        camera={{ position: [0, 100, 0], fov: 70 }}
+        camera={{ position: [0, 1, 0], fov: 70 }}
         gl={{ antialias: true, alpha: false }}
         shadows
+        tabIndex={0}
+        style={{ outline: 'none' }}
         onCreated={({ camera }) => {
           // Set up camera defaults
           if (camera instanceof THREE.PerspectiveCamera) {
             camera.near = 0.1;
             camera.far = 1000;
+            camera.rotation.set(0, 0, 0, 'YXZ'); // Look straight ahead
             camera.updateProjectionMatrix();
           }
         }}

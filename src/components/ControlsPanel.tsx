@@ -17,6 +17,7 @@ interface ControlsPanelProps {
   onStopPlayback: () => void;
   onResetCamera: () => void;
   onSetTargetFPS: (fps: number) => void;
+  onSetMouseSensitivity: (sensitivity: number) => void;
   onApplySmoothing: (options: SmoothingOptions) => void;
   onRevertSmoothing: () => void;
   onExportSchedules: (options: ExportOptions) => Promise<{schedules: DeforumSchedules, json: string, pretty: string}>;
@@ -36,6 +37,7 @@ export function ControlsPanel({
   onStopPlayback,
   onResetCamera,
   onSetTargetFPS,
+  onSetMouseSensitivity,
   onApplySmoothing,
   onRevertSmoothing,
   onExportSchedules,
@@ -43,8 +45,9 @@ export function ControlsPanel({
   onDownloadJSON,
   onDownloadSchedules
 }: ControlsPanelProps) {
-  const [targetFPS, setTargetFPS] = useState(30);
+  const [targetFPS, setTargetFPS] = useState(20);
   const [speedSlider, setSpeedSlider] = useState(1.0);
+  const [mouseSensitivity, setMouseSensitivity] = useState(0.0001);
   const [simpleSmoothing, setSimpleSmoothing] = useState(0);
   const [smoothingOptions, setSmoothingOptions] = useState<SmoothingOptions>({
     method: 'average',
@@ -56,11 +59,12 @@ export function ControlsPanel({
     frameStart: 0,
     frameEnd: Math.max(0, totalFrames - 1),
     frameStep: 1,
-    axisScaleX: 1.0,
-    axisScaleY: 1.0,
-    axisScaleZ: 1.0,
+    axisScaleX: 1.0,  // Scaling to match reference file (0.1-7 range)
+    axisScaleY: 1.0,  // Scaling to match reference file (0.1-7 range)
+    axisScaleZ: 1.0,  // Scaling to match reference file (0.1-7 range)
     includeEmptyFrames: true,
-    preferAngleOverLens: true
+    preferAngleOverLens: true,
+    cadence: 4
   });
   const [exportedSchedules, setExportedSchedules] = useState<DeforumSchedules | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -101,10 +105,8 @@ export function ControlsPanel({
   const handleCopyValue = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      alert('Value copied to clipboard!');
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
-      alert('Failed to copy to clipboard');
     }
   };
 
@@ -229,9 +231,9 @@ export function ControlsPanel({
           </label>
           <input
             type="range"
-            min="0.1"
+            min="0.05"
             max="10"
-            step="0.1"
+            step="0.05"
             value={speedSlider}
             onChange={(e) => {
               const newSpeed = Number(e.target.value);
@@ -240,6 +242,28 @@ export function ControlsPanel({
               if (pilotRef.current) {
                 pilotRef.current.setSpeed(newSpeed);
               }
+            }}
+            style={{
+              width: '100%',
+              margin: '4px 0'
+            }}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', marginBottom: '4px' }}>
+            Mouse Sensitivity: {(mouseSensitivity * 1000).toFixed(1)}
+          </label>
+            <input
+              type="range"
+              min="0.0001"
+              max="0.005"
+              step="0.0001"
+              value={mouseSensitivity}
+            onChange={(e) => {
+              const newSensitivity = Number(e.target.value);
+              setMouseSensitivity(newSensitivity);
+              onSetMouseSensitivity(newSensitivity);
             }}
             style={{
               width: '100%',
@@ -274,9 +298,9 @@ export function ControlsPanel({
           <button
             style={{ ...buttonStyle, flex: 1 }}
             onClick={() => {
-              // Convert percentage to window size (0-100% = 1-20 window size)
-              const windowSize = Math.max(1, Math.round(1 + (simpleSmoothing / 100) * 19));
-              const iterations = Math.max(1, Math.round(1 + (simpleSmoothing / 100) * 4));
+              // Convert percentage to window size (0-100% = 1-50 window size, much stronger at 100%)
+              const windowSize = Math.max(1, Math.round(1 + (simpleSmoothing / 100) * 49));
+              const iterations = Math.max(1, Math.round(1 + (simpleSmoothing / 100) * 9));
               
               const newOptions: SmoothingOptions = {
                 method: 'average',
@@ -285,7 +309,7 @@ export function ControlsPanel({
                 nonDestructive: true
               };
               
-              handleApplySmoothing(newOptions);
+              onApplySmoothing(newOptions);
             }}
             disabled={totalFrames === 0}
           >
@@ -306,6 +330,23 @@ export function ControlsPanel({
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Export</h3>
         
+        <div>
+          <label style={{ display: 'block', marginBottom: '4px' }}>
+            Cadence: {exportOptions.cadence}
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            step="1"
+            value={exportOptions.cadence}
+            onChange={(e) => handleExportOptionsChange('cadence', Number(e.target.value))}
+            style={{
+              width: '100%',
+              margin: '4px 0'
+            }}
+          />
+        </div>
 
         <button
           style={{ ...buttonStyle, width: '100%', marginBottom: '8px' }}

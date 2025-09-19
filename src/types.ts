@@ -40,6 +40,7 @@ export interface ExportOptions {
   axisScaleZ: number;
   includeEmptyFrames: boolean;
   preferAngleOverLens: boolean;
+  cadence: number;
 }
 
 export interface DeforumSchedules {
@@ -49,7 +50,6 @@ export interface DeforumSchedules {
   rotation_3d_x: string;
   rotation_3d_y: string;
   rotation_3d_z: string;
-  fov: string;
 }
 
 export interface PilotState {
@@ -79,4 +79,5 @@ export interface CameraControls {
   mouseX: number;
   mouseY: number;
   sensitivity: number;
+  shiftPressed: boolean;
 }

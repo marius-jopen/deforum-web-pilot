@@ -137,7 +137,12 @@ export class Recorder {
    * Apply smoothing to the recorded data
    */
   applySmoothing(options: SmoothingOptions): void {
-    if (!this.channelArrays) return;
+    if (!this.channelArrays) {
+      console.log('No channel arrays to smooth');
+      return;
+    }
+
+    console.log('Applying smoothing:', options);
 
     // Store original if non-destructive
     if (options.nonDestructive && !this.originalChannelArrays) {
@@ -148,6 +153,8 @@ export class Recorder {
     for (let i = 0; i < options.iterations; i++) {
       this.smoothChannelArrays(options.windowSize);
     }
+
+    console.log('Smoothing applied successfully');
   }
 
   private smoothChannelArrays(windowSize: number): void {
@@ -238,7 +245,7 @@ export class Recorder {
         this.channelArrays.rotation_3d_x[frame],
         this.channelArrays.rotation_3d_y[frame],
         this.channelArrays.rotation_3d_z[frame],
-        'XYZ'
+        'YXZ'
       ),
       fov: this.channelArrays.fov[frame]
     };

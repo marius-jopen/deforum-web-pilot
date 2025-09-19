@@ -138,6 +138,13 @@ export function App() {
     }
   }, []);
 
+  // Mouse sensitivity controls
+  const handleSetMouseSensitivity = useCallback((sensitivity: number) => {
+    if (pilotRef.current) {
+      pilotRef.current.setMouseSensitivity(sensitivity);
+    }
+  }, []);
+
   // Smoothing controls
   const handleApplySmoothing = useCallback((options: SmoothingOptions) => {
     if (recorderRef.current) {
@@ -230,6 +237,7 @@ export function App() {
         onStopPlayback={handleStopPlayback}
         onResetCamera={handleResetCamera}
         onSetTargetFPS={handleSetTargetFPS}
+        onSetMouseSensitivity={handleSetMouseSensitivity}
         onApplySmoothing={handleApplySmoothing}
         onRevertSmoothing={handleRevertSmoothing}
         onExportSchedules={handleExportSchedules}

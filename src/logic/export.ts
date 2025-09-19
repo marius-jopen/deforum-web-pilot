@@ -3,6 +3,7 @@
  */
 
 import { ChannelArrays, ExportOptions, DeforumSchedules } from '../types';
+import * as THREE from 'three';
 
 export class Exporter {
   /**
@@ -38,7 +39,8 @@ export class Exporter {
       axisScaleX,
       axisScaleY,
       axisScaleZ,
-      includeEmptyFrames
+      includeEmptyFrames,
+      cadence
     } = options;
 
     const totalFrames = channelArrays.translation_x.length;
@@ -51,35 +53,76 @@ export class Exporter {
     const rotationXMap = new Map<number, number>();
     const rotationYMap = new Map<number, number>();
     const rotationZMap = new Map<number, number>();
-    const fovMap = new Map<number, number>();
 
     // Process frames according to options
-    for (let frame = frameStart; frame <= actualFrameEnd; frame += frameStep) {
+    // Honor cadence by only exporting every Nth frame when cadence > 1
+    const startFrameForCadence = cadence > 1
+      ? Math.ceil(frameStart / cadence) * cadence
+      : frameStart;
+
+    // Accumulate camera-local translations for robustness regardless of yaw/pitch
+    let initializedLocal = false;
+    let prevKeyFrame = startFrameForCadence;
+    let cumulativeLocal = new THREE.Vector3(0, 0, 0);
+
+    for (let frame = startFrameForCadence; frame <= actualFrameEnd; frame += frameStep) {
       if (frame >= totalFrames) break;
+      if (cadence > 1 && frame % cadence !== 0) continue;
 
-      // Apply axis scaling to translations
-      translationXMap.set(frame, channelArrays.translation_x[frame] * axisScaleX);
-      translationYMap.set(frame, channelArrays.translation_y[frame] * axisScaleY);
-      translationZMap.set(frame, channelArrays.translation_z[frame] * axisScaleZ);
+      if (!initializedLocal) {
+        // First keyed frame is baseline at 0 in camera-local space
+        translationXMap.set(frame, 0);
+        translationYMap.set(frame, 0);
+        translationZMap.set(frame, 0);
+        initializedLocal = true;
+        prevKeyFrame = frame;
+      } else {
+        // World delta between current frame and previous keyed frame
+        const worldDelta = new THREE.Vector3(
+          channelArrays.translation_x[frame] - channelArrays.translation_x[prevKeyFrame],
+          channelArrays.translation_y[frame] - channelArrays.translation_y[prevKeyFrame],
+          channelArrays.translation_z[frame] - channelArrays.translation_z[prevKeyFrame]
+        );
 
-      // Convert rotations from radians to degrees
-      rotationXMap.set(frame, this.radiansToDegrees(channelArrays.rotation_3d_x[frame]));
-      rotationYMap.set(frame, this.radiansToDegrees(channelArrays.rotation_3d_y[frame]));
-      rotationZMap.set(frame, this.radiansToDegrees(channelArrays.rotation_3d_z[frame]));
+        // Transform world delta into previous camera's local frame using 'YXZ' Euler
+        const prevEuler = new THREE.Euler(
+          channelArrays.rotation_3d_x[prevKeyFrame],
+          channelArrays.rotation_3d_y[prevKeyFrame],
+          channelArrays.rotation_3d_z[prevKeyFrame],
+          'YXZ'
+        );
+        const invRot = new THREE.Matrix4().makeRotationFromEuler(prevEuler).invert();
+        const localDelta = worldDelta.clone().applyMatrix4(invRot);
 
-      // FOV is already in degrees
-      fovMap.set(frame, channelArrays.fov[frame]);
+        cumulativeLocal.add(localDelta);
+
+        // Map camera-local axes to Deforum with agreed signs
+        translationXMap.set(frame, cumulativeLocal.x * axisScaleX);      // Left/Right
+        translationYMap.set(frame, -cumulativeLocal.y * axisScaleY);     // Up/Down (invert Y)
+        translationZMap.set(frame, -cumulativeLocal.z * axisScaleZ);     // Forward/Back (invert Z)
+
+        prevKeyFrame = frame;
+      }
+
+      // Convert rotations from radians to degrees and apply scaling to match reference
+      // Three.js: X=pitch(mouseY), Y=yaw(mouseX), Z=roll(0)
+      // Deforum: X=pitch, Y=yaw, Z=roll
+      // Based on user feedback: trying direct mapping with inversions
+      // Absolute rotations in degrees with scale and sign
+      rotationXMap.set(frame, -this.radiansToDegrees(channelArrays.rotation_3d_x[frame]) * 0.1);  // Pitch (inverted)
+      rotationYMap.set(frame, -this.radiansToDegrees(channelArrays.rotation_3d_y[frame]) * 0.1);  // Yaw (inverted)
+      rotationZMap.set(frame, this.radiansToDegrees(channelArrays.rotation_3d_z[frame]) * 0.1);   // Roll
     }
 
     // Handle empty frames if requested
-    if (includeEmptyFrames) {
+    // Only backfill missing frames when cadence == 1; otherwise it injects zeros between keyed frames
+    if (includeEmptyFrames && cadence <= 1) {
       this.addEmptyFrames(translationXMap, frameStart, actualFrameEnd, frameStep);
       this.addEmptyFrames(translationYMap, frameStart, actualFrameEnd, frameStep);
       this.addEmptyFrames(translationZMap, frameStart, actualFrameEnd, frameStep);
       this.addEmptyFrames(rotationXMap, frameStart, actualFrameEnd, frameStep);
       this.addEmptyFrames(rotationYMap, frameStart, actualFrameEnd, frameStep);
       this.addEmptyFrames(rotationZMap, frameStart, actualFrameEnd, frameStep);
-      this.addEmptyFrames(fovMap, frameStart, actualFrameEnd, frameStep);
     }
 
     // Build schedule strings
@@ -89,8 +132,7 @@ export class Exporter {
       translation_z: this.buildScheduleString(translationZMap),
       rotation_3d_x: this.buildScheduleString(rotationXMap),
       rotation_3d_y: this.buildScheduleString(rotationYMap),
-      rotation_3d_z: this.buildScheduleString(rotationZMap),
-      fov: this.buildScheduleString(fovMap)
+      rotation_3d_z: this.buildScheduleString(rotationZMap)
     };
   }
 
@@ -210,11 +252,12 @@ export class Exporter {
       frameStart: 0,
       frameEnd: Math.max(0, totalFrames - 1),
       frameStep: 1,
-      axisScaleX: 1.0,
-      axisScaleY: 1.0,
-      axisScaleZ: 1.0,
+      axisScaleX: 1.0,  // Scaling to match reference file (0.1-7 range)
+      axisScaleY: 1.0,  // Scaling to match reference file (0.1-7 range)
+      axisScaleZ: 1.0,  // Scaling to match reference file (0.1-7 range)
       includeEmptyFrames: true,
-      preferAngleOverLens: true
+      preferAngleOverLens: true,
+      cadence: 4
     };
   }
 }
