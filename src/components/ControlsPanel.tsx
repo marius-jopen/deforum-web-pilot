@@ -44,7 +44,7 @@ export function ControlsPanel({
   const [speedSlider, setSpeedSlider] = useState(1.0);
   const [mouseSensitivity, setMouseSensitivity] = useState(0.0001);
   const [simpleSmoothing, setSimpleSmoothing] = useState(0);
-  const [smoothingOptions, setSmoothingOptions] = useState<SmoothingOptions>({
+  const [smoothingOptions] = useState<SmoothingOptions>({
     method: 'average',
     windowSize: 5,
     iterations: 1,

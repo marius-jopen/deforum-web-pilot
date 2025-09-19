@@ -203,28 +203,7 @@ export function App() {
     }
   }, []);
 
-  const handleCopyJSON = useCallback(async (json: string) => {
-    if (exporterRef.current) {
-      const success = await exporterRef.current.copyToClipboard(json);
-      if (success) {
-        alert('JSON copied to clipboard!');
-      } else {
-        alert('Failed to copy to clipboard');
-      }
-    }
-  }, []);
-
-  const handleDownloadJSON = useCallback((json: string) => {
-    if (exporterRef.current) {
-      exporterRef.current.downloadAsFile(json, 'deforum-schedules.json');
-    }
-  }, []);
-
-  const handleDownloadSchedules = useCallback((schedules: string) => {
-    if (exporterRef.current) {
-      exporterRef.current.downloadAsFile(schedules, 'deforum-schedules.txt');
-    }
-  }, []);
+  // Removed unused copy/download handlers
 
   // Cleanup on unmount
   useEffect(() => {
