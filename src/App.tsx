@@ -6,6 +6,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Scene } from './three/Scene';
 import { HUD } from './components/HUD';
 import { WelcomeBox } from './components/WelcomeBox';
+import { MobileOverlay } from './components/MobileOverlay';
 import { ControlsPanel } from './components/ControlsPanel';
 import { Recorder } from './logic/recorder';
 import { Pilot } from './logic/pilot';
@@ -23,6 +24,7 @@ export function App() {
   const [speedLevel, setSpeedLevel] = useState<SpeedLevel>(1);
   const [speed, setSpeed] = useState(1.0);
   const [targetFPS, setTargetFPS] = useState(30);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Refs for logic classes
   const recorderRef = useRef<Recorder | null>(null);
@@ -35,6 +37,17 @@ export function App() {
   useEffect(() => {
     recorderRef.current = new Recorder(30);
     exporterRef.current = new Exporter();
+  }, []);
+
+  useEffect(() => {
+    const check = () => {
+      const narrow = window.innerWidth <= 900 || window.innerHeight <= 600;
+      const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0;
+      setIsMobile(narrow || touchCapable);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   // Initialize pilot when camera is ready
@@ -214,6 +227,12 @@ export function App() {
       }
     };
   }, []);
+
+  if (isMobile) {
+    return (
+      <MobileOverlay title="Deforum Web Pilot" />
+    );
+  }
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>

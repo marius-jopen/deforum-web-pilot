@@ -78,14 +78,18 @@ export function WelcomeBox({ title = 'Deforum Web Pilot', videoId = 'efn7dsD0bdE
     padding: '12px',
     width: '100%',
     height: 'calc(100% - 48px)',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column'
   };
 
   const videoWrapStyle: React.CSSProperties = {
     position: 'relative',
     width: '100%',
     height: '100%',
-    background: '#000'
+    background: '#000',
+    flex: '1 1 auto',
+    minHeight: 0
   };
 
   const iframeStyle: React.CSSProperties = {
@@ -95,6 +99,13 @@ export function WelcomeBox({ title = 'Deforum Web Pilot', videoId = 'efn7dsD0bdE
     width: '100%',
     height: '100%',
     border: '0'
+  };
+
+  const descriptionStyle: React.CSSProperties = {
+    marginTop: '15px',
+    fontSize: '20px',
+    textAlign: 'center',
+    color: '#303030'
   };
 
   return (
@@ -130,6 +141,11 @@ export function WelcomeBox({ title = 'Deforum Web Pilot', videoId = 'efn7dsD0bdE
             allowFullScreen
           />
         </div>
+        {!isMinimized && (
+          <p style={descriptionStyle}>
+            Pilot a 3D camera, record smooth paths, and export Deforum-ready schedules.
+          </p>
+        )}
       </div>
     </div>
   );
