@@ -5,6 +5,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Scene } from './three/Scene';
 import { HUD } from './components/HUD';
+import { WelcomeBox } from './components/WelcomeBox';
 import { ControlsPanel } from './components/ControlsPanel';
 import { Recorder } from './logic/recorder';
 import { Pilot } from './logic/pilot';
@@ -248,6 +249,9 @@ export function App() {
         onRevertSmoothing={handleRevertSmoothing}
         onExportSchedules={handleExportSchedules}
       />
+
+      {/* Welcome / Tutorial */}
+      <WelcomeBox title="Deforum Web Pilot" />
 
       {/* Branding pill */}
       <a
